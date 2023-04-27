@@ -44,11 +44,90 @@ hostDirectives?: (Type<unknown> | {
 
 #### Ng-Template
 
+Trường hợp hay dùng
+
+1. Dùng kết hợp với các Structure Directive của Angular, ví dụ như *ngIf
+
+2. Khi một số UI element trong một component bị lặp lại trong chính component đó, nhưng phần code đó quá nhỏ để tách ra làm một component riêng.
+
+3. Dùng ng-template để pass vào component khác. Hỗ trợ override template có sẵn trong component.
+
 ```html
 <div *ngIf="isTrue; then tmplWhenTrue else tmplWhenFalse"></div>
 <ng-template #tmplWhenTrue >I show-up when isTrue is true. </ng-template>
 <ng-template #tmplWhenFalse > I show-up when isTrue is false </ng-template>
 ```
+
+#### Ng-TemplateOutlet
+`ngTemplateOutlet` là cách dùng để render một template được tạo ra bởi ng-template lên UI.
+
+- `*ngTemplateOutlet="templateRef"` (chú ý dấu sao `*` nhé, không có là không chạy đâu đấy)
+- `[ngTemplateOutlet]="templateRef"`
+
+Tuy nhiên, như component có `@Input()` để truyền data từ bên ngoài vào, thì ng-template cũng có cú pháp tương tự để truyền data. Đó chính là `ngTemplateOutletContext`
+
+Ví dụ như mình muốn reuse lại một button với những tên khác nhau, ngoài ra, một button mình muốn có icon, và một button mình ko muốn có icon. Thì bạn hoàn toàn cũng có thể dùng kết hợp giữa ng-template, ngTemplateOutlet và ngTemplateOutletContext để viết code.
+
+```html
+<button class="btn btn-primary">Click here</button>
+
+<button class="btn btn-danger">
+  <i class="fa fa-remove"></i>
+  Delete
+</button>
+```
+Hoàn toàn có thể được viết lại thành.
+
+```html
+<ng-template
+  #buttonTmpl
+  let-label="label"
+  let-className="className"
+  let-icon="icon"
+>
+  <button [ngClass]="['btn', className ? className : '']">
+    <i *ngIf="icon" class="fa {{icon}}"></i>
+    {{ label }}
+  </button>
+</ng-template>
+
+<ng-container
+  [ngTemplateOutlet]="buttonTmpl"
+  [ngTemplateOutletContext]="{ label: 'Click here', className: 'btn-primary', icon: null }"
+>
+</ng-container>
+
+<ng-container
+  [ngTemplateOutlet]="buttonTmpl"
+  [ngTemplateOutletContext]="{ label: 'Remove', className: 'btn-danger', icon: 'fa-remove' }"
+>
+</ng-container>
+```
+
+Tuy nhiều code hơn, nhưng giờ chúng ta có thể reuse lại button này trong cùng component. Hoặc pass cái template này vào component khác cũng được, ko vấn đề gì cả.
+
+Vài điểm chú ý:
+
+- Khi define ra ng-template, bạn có thể config cho template đó nhận vào value bằng cách dùng cú pháp let-name="name". Trong đó name ở bên trái dấu bằng là variable bạn có thể access được ở trong ng-template, còn name ở bên phải dấu bằng là tên của object property khi pass qua ngTemplateOutletContext. Hai cái name này hoàn toàn có thể khác nhau, không có vấn đề gì cả.
+
+- Nếu bạn không đặt tên cho variable ở vế phải của dấu bằng, chỉ viết là let-name, thì khi truyền data qua context, property của object truyền vào sẽ là $implicit. Ví dụ cụ thể:
+
+```html
+<ng-template #buttonTmpl let-label let-className="className" let-icon="icon">
+  <button [ngClass]="['btn', className ? className : '']">
+    <i *ngIf="icon" class="fa {{icon}}"></i>
+    {{ label }}
+  </button>
+</ng-template>
+
+<ng-container
+  [ngTemplateOutlet]="buttonTmpl"
+  [ngTemplateOutletContext]="{ $implicit: 'Remove', className: 'btn-danger', icon: 'fa-remove' }"
+>
+</ng-container>
+```
+
+Khi dùng variable ở trong ng-template, bạn sẽ mất type safe. Ví dụ bạn pass vào một object user theo cú pháp let-user="user" với firstName, lastName và age. Thì trong ng-template, bạn muốn làm gì cái object này cũng được, ví dụ như thử dùng user.fullName, compiler sẽ không catch được lỗi, và cả angular language service cũng không báo lỗi trên IDE.
 
 #### Ng-Container
 
